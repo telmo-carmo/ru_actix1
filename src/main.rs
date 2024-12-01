@@ -1,7 +1,20 @@
+/*
 
+
+
+*/
+
+use std::env;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use std::time::{SystemTime, UNIX_EPOCH};
 use log::{info, warn};
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct Req1 {
+    name: String,
+    age: i32,
+}
 
 #[get("/")]
 async fn index() -> impl Responder {
@@ -13,9 +26,9 @@ async fn index() -> impl Responder {
 }
 
 #[post("/echo")]
-async fn echo(req_body: String) -> impl Responder {
-    warn!("Post /echo");
-    HttpResponse::Ok().body(req_body)
+async fn echo(req: web::Json<Req1>) -> impl Responder {
+    warn!("Post /echo {}",req);
+    HttpResponse::Ok().body(req)
 }
 
 async fn manual_hello() -> impl Responder {
@@ -24,6 +37,7 @@ async fn manual_hello() -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    env::set_var("RUST_LOG", "debug");
     env_logger::init(); // Initialize the logger
     HttpServer::new(|| {
         App::new()

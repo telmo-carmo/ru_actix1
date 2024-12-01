@@ -1,1 +1,6 @@
 /target
+.git
+.vscode
+Cargo.lock
+bin
+
