@@ -28,7 +28,7 @@ async fn index() -> impl Responder {
     let dt1: DateTime<Utc> = start.into();
     let since_the_epoch = start.duration_since(UNIX_EPOCH).expect("Time went backwards");
     let secs = since_the_epoch.as_secs();
-    info!("Current time: {}, secs = {}",dt1.format("%Y-%m-%d %H:%M:%S").to_string(), secs);
+    info!("Current time: {}, secs = {}",dt1.format("%Y-%m-%d %H:%M:%S%.3f").to_string(), secs);
     HttpResponse::Ok().body(format!("Hello world, {}",secs))
 }
 
