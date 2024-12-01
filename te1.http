@@ -1,0 +1,13 @@
+@host1 = http://localhost:8080
+
+###
+GET {{host1}}/
+
+###
+POST {{host1}}/echo
+Content-Type: application/json
+
+{
+    "name": "joe",
+    "age": 33
+}
