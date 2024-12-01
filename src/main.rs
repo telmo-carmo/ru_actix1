@@ -28,7 +28,7 @@ async fn index() -> impl Responder {
 #[post("/echo")]
 async fn echo(req: web::Json<Req1>) -> impl Responder {
     warn!("Post /echo {}",req);
-    HttpResponse::Ok().body(req)
+    HttpResponse::Ok().body(req.name)
 }
 
 async fn manual_hello() -> impl Responder {
