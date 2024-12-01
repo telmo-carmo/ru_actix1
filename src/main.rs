@@ -30,8 +30,8 @@ async fn index() -> impl Responder {
 
 #[post("/echo")]
 async fn echo(req: web::Json<Req1>) -> impl Responder {
-    warn!("Post /echo {}",req);
-    HttpResponse::Ok().body(req.name)
+    warn!("Post /echo name={} age={}",req.name,req.age);
+    HttpResponse::Ok().body(req.name.clone())
 }
 
 async fn manual_hello() -> impl Responder {
