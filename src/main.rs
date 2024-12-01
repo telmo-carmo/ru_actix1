@@ -4,9 +4,11 @@ cargo check
 
 cargo build --release
 
+cargo run -- 8000
+
 */
 
-//use std::env;
+use std::env;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use env_logger::{Builder,Env};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -40,10 +42,24 @@ async fn manual_hello() -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let port = 8080;
+    let mut port = 8080;
     Builder::from_env(Env::default().default_filter_or("debug")).init();
     //env::set_var("RUST_LOG", "debug");
     //env_logger::init(); // Initialize the logger
+
+    let args: Vec<String> = env::args().collect();
+    if args.len() > 1 {
+        let number_str = &args[1];
+
+        port = match number_str.parse() {
+            Ok(num) => num,
+            Err(_) => {
+                println!("Invalid port number: {}", number_str);
+                8080
+            }
+        };
+    }
+
 
     debug!("Running webserver on port {}",port );
     HttpServer::new(|| {
