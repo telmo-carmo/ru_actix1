@@ -9,6 +9,7 @@ cargo run -- 8000
 */
 
 use std::env;
+use chrono::{DateTime, Utc};
 use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use env_logger::{Builder,Env};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -24,9 +25,10 @@ struct Req1 {
 #[get("/")]
 async fn index() -> impl Responder {
     let start = SystemTime::now();
+    let dt1: DateTime<Utc> = start.into();
     let since_the_epoch = start.duration_since(UNIX_EPOCH).expect("Time went backwards");
     let secs = since_the_epoch.as_secs();
-    info!("Current time: {}", secs);
+    info!("Current time: {}, secs = {}",dt1.format("%Y-%m-%d %H:%M:%S").to_string(), secs);
     HttpResponse::Ok().body(format!("Hello world, {}",secs))
 }
 
