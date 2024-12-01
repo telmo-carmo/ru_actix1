@@ -1,13 +1,16 @@
 /*
 
+cargo check
 
+cargo build --release
 
 */
 
-use std::env;
+//use std::env;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
+use env_logger::{Builder,Env};
 use std::time::{SystemTime, UNIX_EPOCH};
-use log::{info, warn};
+use log::{debug, info, warn};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -37,15 +40,19 @@ async fn manual_hello() -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    env::set_var("RUST_LOG", "debug");
-    env_logger::init(); // Initialize the logger
+    let port = 8080;
+    Builder::from_env(Env::default().default_filter_or("debug")).init();
+    //env::set_var("RUST_LOG", "debug");
+    //env_logger::init(); // Initialize the logger
+
+    debug!("Running webserver on port {}",port );
     HttpServer::new(|| {
         App::new()
             .service(index)
             .service(echo)
             .route("/hey", web::get().to(manual_hello))
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind(("127.0.0.1", port))?
     .run()
     .await
 }
