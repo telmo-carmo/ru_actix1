@@ -15,7 +15,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use log::{debug, info, warn};
 use serde::Deserialize;
 
-#[derive(Deserialize)]
+#[derive(Deserialize,Debug)]
 struct Req1 {
     name: String,
     age: i32,
@@ -32,8 +32,9 @@ async fn index() -> impl Responder {
 
 #[post("/echo")]
 async fn echo(req: web::Json<Req1>) -> impl Responder {
-    warn!("Post /echo name={} age={}",req.name,req.age);
-    HttpResponse::Ok().body(req.name.clone())
+    //warn!("Post /echo name={} age={}",req.name,req.age);
+    warn!("Post /echo req={:?}",req);
+    HttpResponse::Ok().body(format!("{};{}",req.name,req.age))
 }
 
 async fn manual_hello() -> impl Responder {
