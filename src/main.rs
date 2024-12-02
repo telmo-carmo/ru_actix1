@@ -1,21 +1,40 @@
+
+
+#[macro_use]
+extern crate diesel;
+
 /*
 
+cargo install diesel_cli --no-default-features --features "sqlite-bundled"
+diesel setup
+
+diesel migration generate create_bonuses
+diesel migration run
+
+diesel print-schema
+
+--
 cargo check
 
 cargo build --release
 
 */
 
-
-//use std::env;
+use std::env;
 use actix_web::{delete, get, post, put, web, App, HttpResponse, HttpServer, Responder};
-use env_logger::{Builder, Env};
+use diesel::prelude::*;
+use diesel::r2d2::{self, ConnectionManager};
+use dotenv::dotenv;
+//use env_logger::{Builder, Env};
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use std::collections::HashMap;
-use std::sync::Mutex;
+
+mod schema;
+mod models;
+use schema::{bonus,dept};
+use models::{Bonus,Dept};
 
 #[derive(Deserialize)]
 struct Req1 {
@@ -29,15 +48,8 @@ struct Resp1 {
     name: String,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct Bonus {
-    pub ename: String,
-    pub job: String,
-    pub sal: i32,
-    pub comm: i32,
-}
+type DbPool = r2d2::Pool<ConnectionManager<SqliteConnection>>;
 
-type BonusStore = Mutex<HashMap<u32, Bonus>>;
 
 #[get("/")]
 async fn index() -> impl Responder {
@@ -66,74 +78,131 @@ async fn manual_hello() -> impl Responder {
 
 // Bonus CRUD
 #[post("/api/bonus")]
-async fn create_bonus(
-    bonus: web::Json<Bonus>,
-    bonus_store: web::Data<BonusStore>,
-) -> impl Responder {
-    let mut store = bonus_store.lock().unwrap();
-    let id = store.len() as u32 + 1;
-    store.insert(id, bonus.into_inner());
-    info!("created bonus id={}",id);
-    HttpResponse::Created().json(id)
+async fn create_bonus(pool: web::Data<DbPool>, pbonus: web::Json<Bonus>) -> impl Responder {
+    let mut conn = pool.get().expect("Couldn't get db connection from pool");
+
+    let new_bonus = Bonus {
+        ename: pbonus.ename.clone(),
+        job: pbonus.job.clone(),
+        sal: pbonus.sal,
+        comm: pbonus.comm,
+    };
+
+    diesel::insert_into(bonus::table)
+        .values(&new_bonus)
+        .execute(&mut conn)
+        .expect("Error saving new bonus");
+
+    info!("created bonus name={}",new_bonus.ename);
+    HttpResponse::Created().json(new_bonus)
 }
 
 #[get("/api/bonus")]
-async fn get_all_bonus(bonus_store: web::Data<BonusStore>) -> impl Responder {
-    let store = bonus_store.lock().unwrap();
-    let bonuses: Vec<Bonus> = store.values().cloned().collect();
-    info!("get all bonus #={}", bonuses.len());
-    HttpResponse::Ok().json(bonuses)
+async fn get_all_bonus(pool: web::Data<DbPool>) -> impl Responder {
+    let mut conn = pool.get().expect("Couldn't get db connection from pool");
+    let results = bonus::table.load::<Bonus>(&mut conn).expect("Error loading bonuses");
+    info!("bonus get all #={}",results.len());
+    HttpResponse::Ok().json(results)
 }
+
 
 #[get("/api/bonus/{id}")]
-async fn get_bonus(id: web::Path<u32>, bonus_store: web::Data<BonusStore>) -> impl Responder {
-    let store = bonus_store.lock().unwrap();
-    info!("get bonus id={}",id);
-    if let Some(bonus) = store.get(&id) {
-        HttpResponse::Ok().json(bonus)
-    } else {
-        HttpResponse::NotFound().finish()
+async fn get_bonus(pool: web::Data<DbPool>, id: web::Path<String>) -> impl Responder {
+    let mut conn = pool.get().expect("Couldn't get db connection from pool");
+    info!("bonus get id={}",id);
+    let result = bonus::table.find(id.into_inner()).first::<Bonus>(&mut conn);
+
+    match result {
+        Ok(bonus) => HttpResponse::Ok().json(bonus),
+        Err(_) => HttpResponse::NotFound().finish(),
     }
 }
+
 
 #[put("/api/bonus/{id}")]
-async fn update_bonus( id: web::Path<u32>,bonus: web::Json<Bonus>, bonus_store: web::Data<BonusStore>) -> impl Responder {
-    let mut store = bonus_store.lock().unwrap();
-    info!("update bonus id={}",id);
-    if store.contains_key(&id) {
-        let item_id: u32 = *id;
-        store.insert(item_id, bonus.into_inner());
-        HttpResponse::Ok().finish()
-    } else {
-        HttpResponse::NotFound().finish()
+async fn update_bonus(pool: web::Data<DbPool>, id: web::Path<String>, pbonus: web::Json<Bonus>) -> impl Responder {
+    let mut conn = pool.get().expect("Couldn't get db connection from pool");
+
+    info!("bonus update id={}",id);
+    let updated_bonus = Bonus {
+        ename: pbonus.ename.clone(),
+        job: pbonus.job.clone(),
+        sal: pbonus.sal,
+        comm: pbonus.comm,
+    };
+
+    match diesel::update(bonus::table.find(id.into_inner()))
+        .set(&updated_bonus)
+        .execute(&mut conn) {
+        Ok(_) => HttpResponse::Ok().json(updated_bonus),
+        Err(_) => HttpResponse::InternalServerError().finish(),
     }
 }
 
+
 #[delete("/api/bonus/{id}")]
-async fn delete_bonus(id: web::Path<u32>, bonus_store: web::Data<BonusStore>) -> impl Responder {
-    let mut store = bonus_store.lock().unwrap();
-    info!("delete bonus id={}",id);
-    if store.remove(&id).is_some() {
-        HttpResponse::Ok().finish()
-    } else {
-        HttpResponse::NotFound().finish()
+async fn delete_bonus(pool: web::Data<DbPool>, id: web::Path<String>) -> impl Responder {
+    let mut conn = pool.get().expect("Couldn't get db connection from pool");
+    info!("bonus delete id={}",id);
+    diesel::delete(bonus::table.find(id.into_inner()))
+        .execute(&mut conn)
+        .expect("Error deleting bonus");
+
+    HttpResponse::Ok().finish()
+}
+
+#[get("/api/dept")]
+async fn get_all_dept(pool: web::Data<DbPool>) -> impl Responder {
+    let mut conn = pool.get().expect("Couldn't get db connection from pool");
+    let results = dept::table.load::<Dept>(&mut conn).expect("Error loading departments");
+    info!("depts get all #={}",results.len());
+    HttpResponse::Ok().json(results)
+}
+
+#[get("/api/dept/{id}")]
+async fn get_dept(pool: web::Data<DbPool>, deptno: web::Path<i32>) -> impl Responder {
+    let mut conn = pool.get().expect("Couldn't get db connection from pool");
+    info!("dept get deptno={}", deptno);
+    let result = dept::table.find(deptno).first::<Dept>(&mut conn);
+
+    match result {
+        Ok(fdept) => HttpResponse::Ok().json(fdept),
+        Err(_) => HttpResponse::NotFound().finish(),
     }
 }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let port = 8080;
-    Builder::from_env(Env::default().default_filter_or("debug")).init();
+    let mut port = 8080;
+
+    let args: Vec<String> = env::args().collect();
+    if args.len() > 1 {
+        let s_port = &args[1];
+        port = match s_port.parse() {
+            Ok(n) => n,
+            Err(e) => {
+                println!("Error in port  argument: {}", e);
+                8080
+            }
+        }
+    }
+    //Builder::from_env(Env::default().default_filter_or("debug")).init();
+
     //env::set_var("RUST_LOG", "debug");
-    //dotenv().ok();
-    //env_logger::init(); // Initialize the logger
+    dotenv().ok();
+    env_logger::init(); // Initialize the logger from env
+
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let manager = ConnectionManager::<SqliteConnection>::new(database_url);
+    let db_pool = r2d2::Pool::builder()
+        .build(manager)
+        .expect("Failed to create DB pool.");
 
     debug!("Running webserver on port {}", port);
-    let bonus_store = web::Data::new(Mutex::new(HashMap::<u32,Bonus>::new()));
 
     HttpServer::new(move || {
         App::new()
-            .app_data(bonus_store.clone())
+            .app_data(web::Data::new(db_pool.clone()))
             .service(index)
             .service(echo)
             .service(create_bonus)
@@ -141,6 +210,8 @@ async fn main() -> std::io::Result<()> {
             .service(get_bonus)
             .service(update_bonus)
             .service(delete_bonus)
+            .service(get_all_dept)
+            .service(get_dept)
             .route("/hey", web::get().to(manual_hello))
     })
     .bind(("127.0.0.1", port))?

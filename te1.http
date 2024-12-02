@@ -16,33 +16,33 @@ Content-Type: application/json
 GET {{host1}}/api/bonus
 
 ###
-GET {{host1}}/api/bonus/1
+GET {{host1}}/api/bonus/JONES
 
 ###
 POST {{host1}}/api/bonus
 Content-Type: application/json
 
 {
-    "ename": "ALLEN",
-    "job": "SALESMAN",
-    "sal": 123,
-    "comm": 300
-}
-
-###
-POST {{host1}}/api/bonus
-Content-Type: application/json
-
-{
-    "ename": "JONES",
+    "ename": "BLAKE",
     "job": "MANAGER",
-    "sal": 456,
+    "sal": 220,
     "comm": 500
 }
 
 ###
+POST {{host1}}/api/bonus
+Content-Type: application/json
 
-PUT {{host1}}/api/bonus/1
+{
+    "ename": "JONAS",
+    "job": "MANAGER",
+    "sal": 210,
+    "comm": 400
+}
+
+###
+
+PUT {{host1}}/api/bonus/ALLEN
 Content-Type: application/json
 
 {
@@ -52,4 +52,12 @@ Content-Type: application/json
     "comm": 320
 }
 ###
-DELETE {{host1}}/api/bonus/1
+DELETE {{host1}}/api/bonus/BLAKE
+
+###
+GET {{host1}}/api/dept HTTP/1.1
+
+###
+GET {{host1}}/api/dept/30
+
+
