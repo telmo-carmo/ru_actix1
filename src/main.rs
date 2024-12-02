@@ -18,6 +18,8 @@ cargo check
 
 cargo build --release
 
+cargo run -- 8000
+
 */
 
 use std::env;
@@ -40,7 +42,7 @@ use models::{Bonus,Dept};
 
 mod jwt_mw;
 
-#[derive(Deserialize)]
+#[derive(Deserialize,Debug)]
 struct Req1 {
     name: String,
     age: i32,
@@ -58,24 +60,16 @@ type DbPool = r2d2::Pool<ConnectionManager<SqliteConnection>>;
 #[get("/")]
 async fn index() -> impl Responder {
     let start = SystemTime::now();
-    let since_the_epoch = start
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards");
+    let since_the_epoch = start.duration_since(UNIX_EPOCH).expect("Time went backwards");
     let secs = since_the_epoch.as_secs();
-    let dt: DateTime<Utc> = DateTime::from(start);
-    let dts = dt.format("%Y-%m-%d %H:%M:%S.%3f").to_string();
-    info!("Current time: {}, secs: {}",dts, secs);
-    HttpResponse::Ok().body(format!("Hello world, {}", secs))
+    info!("Current time: {}", secs);
+    HttpResponse::Ok().body(format!("Hello world, {}",secs))
 }
 
 #[post("/echo")]
 async fn echo(req: web::Json<Req1>) -> impl Responder {
-    warn!("Post /echo name={} age={}", req.name, req.age);
-    let rs = Resp1 {
-        id: 1234566,
-        name: req.name.clone(),
-    };
-    HttpResponse::Ok().json(rs)
+    warn!("Post /echo name={} age={}",req.name,req.age);
+    HttpResponse::Ok().body(req.name.clone())
 }
 
 async fn manual_hello() -> impl Responder {
@@ -225,24 +219,10 @@ async fn do_login(req: web::Json<LoginRequest>) -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let mut port = 8080;
-
-    let args: Vec<String> = env::args().collect();
-    if args.len() > 1 {
-        let s_port = &args[1];
-        port = match s_port.parse() {
-            Ok(n) => n,
-            Err(e) => {
-                println!("Error in port  argument: {}", e);
-                8080
-            }
-        }
-    }
-    //Builder::from_env(Env::default().default_filter_or("debug")).init();
-
+    let port = 8080;
+    Builder::from_env(Env::default().default_filter_or("debug")).init();
     //env::set_var("RUST_LOG", "debug");
-    dotenv().ok();
-    env_logger::init(); // Initialize the logger from env
+    //env_logger::init(); // Initialize the logger
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let manager = ConnectionManager::<SqliteConnection>::new(database_url);
