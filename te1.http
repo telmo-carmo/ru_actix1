@@ -58,7 +58,7 @@ DELETE {{host1}}/api/bonus/BLAKE
 GET {{host1}}/api/dept HTTP/1.1
 
 ###
-GET {{host1}}/api/dept/30
+GET {{host1}}/api/dept/20
 
 ###
 POST  {{host1}}/auth/login

@@ -23,7 +23,6 @@ cargo run -- 8000
 */
 
 use std::env;
-use std::fmt::format;
 use actix_web::{delete, get, post, put, web, App, HttpResponse, HttpServer, Responder};
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
@@ -62,14 +61,20 @@ async fn index() -> impl Responder {
     let start = SystemTime::now();
     let since_the_epoch = start.duration_since(UNIX_EPOCH).expect("Time went backwards");
     let secs = since_the_epoch.as_secs();
-    info!("Current time: {}", secs);
+    let dt: DateTime<Utc> = DateTime::from(start);
+    let dts = dt.format("%Y-%m-%d %H:%M:%S.%3f").to_string();
+    info!("Current time: {}, secs: {}",dts, secs);
     HttpResponse::Ok().body(format!("Hello world, {}",secs))
 }
 
 #[post("/echo")]
 async fn echo(req: web::Json<Req1>) -> impl Responder {
-    warn!("Post /echo name={} age={}",req.name,req.age);
-    HttpResponse::Ok().body(req.name.clone())
+    warn!("Post /echo name={} age={}", req.name, req.age);
+    let rs = Resp1 {
+        id: 1234566,
+        name: req.name.clone(),
+    };
+    HttpResponse::Ok().json(rs)
 }
 
 async fn manual_hello() -> impl Responder {
@@ -163,7 +168,7 @@ async fn get_all_dept(pool: web::Data<DbPool>) -> impl Responder {
 async fn get_dept(pool: web::Data<DbPool>, deptno: web::Path<i32>) -> impl Responder {
     let mut conn = pool.get().expect("Couldn't get db connection from pool");
     info!("dept get deptno={}", deptno);
-    let id = 30;
+    let id = *deptno;
     let result = dept::table.find(id).first::<Dept>(&mut conn);
 
     match result {
@@ -176,12 +181,10 @@ async fn get_dept(pool: web::Data<DbPool>, deptno: web::Path<i32>) -> impl Respo
 async fn get_rnd() -> impl Responder {
     // Validate the JWT token
 
-
     let mut rng = rand::thread_rng();
     let random_number: u32 = rng.gen_range(0..100);
     warn!("rnd = {}", random_number);
     HttpResponse::Ok().json(random_number)
- 
 }
 
 #[derive(Deserialize)]
@@ -219,10 +222,24 @@ async fn do_login(req: web::Json<LoginRequest>) -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let port = 8080;
-    Builder::from_env(Env::default().default_filter_or("debug")).init();
+    let mut port = 8080;
+
+    let args: Vec<String> = env::args().collect();
+    if args.len() > 1 {
+        let s_port = &args[1];
+        port = match s_port.parse() {
+            Ok(n) => n,
+            Err(e) => {
+                println!("Error in port  argument: {}", e);
+                8080
+            }
+        }
+    }
+
+    //Builder::from_env(Env::default().default_filter_or("debug")).init();
     //env::set_var("RUST_LOG", "debug");
-    //env_logger::init(); // Initialize the logger
+    dotenv().ok();
+    env_logger::init(); // Initialize the loggerq
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let manager = ConnectionManager::<SqliteConnection>::new(database_url);
