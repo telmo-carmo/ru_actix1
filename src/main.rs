@@ -99,6 +99,7 @@ async fn get_bonus(id: web::Path<u32>, bonus_store: web::Data<BonusStore>) -> im
 #[put("/api/bonus/{id}")]
 async fn update_bonus( id: web::Path<u32>,bonus: web::Json<Bonus>, bonus_store: web::Data<BonusStore>) -> impl Responder {
     let mut store = bonus_store.lock().unwrap();
+    info!("update bonus id={}",id);
     if store.contains_key(&id) {
         let item_id: u32 = *id;
         store.insert(item_id, bonus.into_inner());
@@ -124,6 +125,7 @@ async fn main() -> std::io::Result<()> {
     let port = 8080;
     Builder::from_env(Env::default().default_filter_or("debug")).init();
     //env::set_var("RUST_LOG", "debug");
+    //dotenv().ok();
     //env_logger::init(); // Initialize the logger
 
     debug!("Running webserver on port {}", port);
