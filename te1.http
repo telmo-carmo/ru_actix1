@@ -11,3 +11,45 @@ Content-Type: application/json
     "name": "joe",
     "age": 33
 }
+
+###
+GET {{host1}}/api/bonus
+
+###
+GET {{host1}}/api/bonus/1
+
+###
+POST {{host1}}/api/bonus
+Content-Type: application/json
+
+{
+    "ename": "ALLEN",
+    "job": "SALESMAN",
+    "sal": 123,
+    "comm": 300
+}
+
+###
+POST {{host1}}/api/bonus
+Content-Type: application/json
+
+{
+    "ename": "JONES",
+    "job": "MANAGER",
+    "sal": 456,
+    "comm": 500
+}
+
+###
+
+PUT {{host1}}/api/bonus/1
+Content-Type: application/json
+
+{
+    "ename": "ALLEN",
+    "job": "SALESMAN",
+    "sal": 2000,
+    "comm": 320
+}
+###
+DELETE {{host1}}/api/bonus/1
