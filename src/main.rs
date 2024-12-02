@@ -21,6 +21,7 @@ cargo build --release
 */
 
 use std::env;
+use std::fmt::format;
 use actix_web::{delete, get, post, put, web, App, HttpResponse, HttpServer, Responder};
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
@@ -29,12 +30,15 @@ use dotenv::dotenv;
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
-
+use chrono::{DateTime, Utc};
+use rand::Rng;
 
 mod schema;
 mod models;
 use schema::{bonus,dept};
 use models::{Bonus,Dept};
+
+mod jwt_mw;
 
 #[derive(Deserialize)]
 struct Req1 {
@@ -58,7 +62,9 @@ async fn index() -> impl Responder {
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards");
     let secs = since_the_epoch.as_secs();
-    info!("Current time: {}", secs);
+    let dt: DateTime<Utc> = DateTime::from(start);
+    let dts = dt.format("%Y-%m-%d %H:%M:%S.%3f").to_string();
+    info!("Current time: {}, secs: {}",dts, secs);
     HttpResponse::Ok().body(format!("Hello world, {}", secs))
 }
 
@@ -163,13 +169,59 @@ async fn get_all_dept(pool: web::Data<DbPool>) -> impl Responder {
 async fn get_dept(pool: web::Data<DbPool>, deptno: web::Path<i32>) -> impl Responder {
     let mut conn = pool.get().expect("Couldn't get db connection from pool");
     info!("dept get deptno={}", deptno);
-    let result = dept::table.find(deptno).first::<Dept>(&mut conn);
+    let id = 30;
+    let result = dept::table.find(id).first::<Dept>(&mut conn);
 
     match result {
         Ok(fdept) => HttpResponse::Ok().json(fdept),
         Err(_) => HttpResponse::NotFound().finish(),
     }
 }
+
+#[get("/auth/rnd")]
+async fn get_rnd() -> impl Responder {
+    // Validate the JWT token
+
+
+    let mut rng = rand::thread_rng();
+    let random_number: u32 = rng.gen_range(0..100);
+    warn!("rnd = {}", random_number);
+    HttpResponse::Ok().json(random_number)
+ 
+}
+
+#[derive(Deserialize)]
+struct LoginRequest {
+    uid: String,
+    pwd: String,
+}
+
+#[derive(Serialize)]
+struct LoginResponse {
+    token: String,
+}
+
+#[post("/auth/login")]
+async fn do_login(req: web::Json<LoginRequest>) -> impl Responder {
+    let username = &req.uid;
+    let password = &req.pwd;
+
+    // Validate username and password (this is a placeholder, replace with actual validation)
+    if username == "demo" && password == "123" {
+        let expiration = chrono::Utc::now()
+            .checked_add_signed(chrono::Duration::seconds(3600)) // Token expires in 1 hour
+            .expect("Valid timestamp")
+            .timestamp() as usize;
+        let token = match jwt_mw::generate_jwt(&username,"NB",expiration) {
+            Ok(s) => s,
+            Err(e) => format!("failed to gen JWT: {}",e),
+        };
+        HttpResponse::Ok().json(LoginResponse { token })
+    } else {
+        HttpResponse::Unauthorized().finish()
+    }
+}
+
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -212,6 +264,8 @@ async fn main() -> std::io::Result<()> {
             .service(delete_bonus)
             .service(get_all_dept)
             .service(get_dept)
+            .service(get_rnd)
+            .service(do_login)
             .route("/hey", web::get().to(manual_hello))
     })
     .bind(("127.0.0.1", port))?

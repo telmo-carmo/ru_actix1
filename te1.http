@@ -60,4 +60,24 @@ GET {{host1}}/api/dept HTTP/1.1
 ###
 GET {{host1}}/api/dept/30
 
+###
+POST  {{host1}}/auth/login
+Content-Type: application/json
+
+{
+    "uid": "demo",
+    "pwd": "123"
+}
+
+
+###
+@tok1 = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZW1vIiwiaWQiOjExLCJleHAiOjE3MjU2MzM4OTN9.K_XBhWPlz_tJLIYcpRqFA1y6dnm4akA8ewar33dDJdA
+
+
+
+###
+GET  {{host1}}/auth/rnd
+Authorization: Bearer {{tok1}}
+
+
 
