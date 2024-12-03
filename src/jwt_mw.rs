@@ -1,6 +1,4 @@
 use actix_web::{Error};
-//use actix_web_httpauth::extractors::bearer::BearerAuth;
-//use actix_web_httpauth::middleware::HttpAuthentication;
 use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
 use serde::{Deserialize, Serialize};
 use jsonwebtoken::{encode, Header, EncodingKey};
