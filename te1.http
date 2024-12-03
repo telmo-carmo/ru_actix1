@@ -71,8 +71,7 @@ Content-Type: application/json
 
 
 ###
-@tok1 = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZW1vIiwiaWQiOjExLCJleHAiOjE3MjU2MzM4OTN9.K_XBhWPlz_tJLIYcpRqFA1y6dnm4akA8ewar33dDJdA
-
+@tok1 = eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZW1vIiwicm9sZSI6InVzZXIiLCJleHAiOjE3MzMyNDgwNDN9.n_8r0LKuT1-wJ1SbsIHJfHd13ENh6x0YFh1lVhJN7LI
 
 
 ###

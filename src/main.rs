@@ -23,7 +23,7 @@ cargo run -- 8000
 */
 
 use std::env;
-use actix_web::{delete, get, post, put, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{delete, get, post, put, web, App, HttpRequest, HttpResponse, HttpServer, Responder, middleware};
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
 use dotenv::dotenv;
@@ -36,10 +36,11 @@ use rand::Rng;
 
 mod schema;
 mod models;
+mod jwt_mw;
+
+
 use schema::{bonus,dept};
 use models::{Bonus,Dept};
-
-mod jwt_mw;
 
 #[derive(Deserialize,Debug)]
 struct Req1 {
@@ -178,13 +179,27 @@ async fn get_dept(pool: web::Data<DbPool>, deptno: web::Path<i32>) -> impl Respo
 }
 
 #[get("/auth/rnd")]
-async fn get_rnd() -> impl Responder {
+async fn get_rnd(req: HttpRequest) -> impl Responder {
     // Validate the JWT token
+    let token = req.headers().get("Authorization").and_then(|header| header.to_str().ok());
 
-    let mut rng = rand::thread_rng();
-    let random_number: u32 = rng.gen_range(0..100);
-    warn!("rnd = {}", random_number);
-    HttpResponse::Ok().json(random_number)
+    if let Some(token) = token {
+        match jwt_mw::validate_jwt(token) {
+            Ok(claims) => {
+                // Token is valid, proceed
+                let mut rng = rand::thread_rng();
+                let random_number: u32 = rng.gen_range(0..100);
+                warn!("rnd = {}, JWT user={}", random_number, claims.sub);
+                HttpResponse::Ok().json(random_number)
+            }
+            Err(_) => {
+                return HttpResponse::Unauthorized().finish();
+            }
+        }
+    } else {
+        return HttpResponse::Unauthorized().finish();
+    }
+
 }
 
 #[derive(Deserialize)]
@@ -209,7 +224,7 @@ async fn do_login(req: web::Json<LoginRequest>) -> impl Responder {
             .checked_add_signed(chrono::Duration::seconds(3600)) // Token expires in 1 hour
             .expect("Valid timestamp")
             .timestamp() as usize;
-        let token = match jwt_mw::generate_jwt(&username,"NB",expiration) {
+        let token = match jwt_mw::generate_jwt(&username,"user",expiration) {
             Ok(s) => s,
             Err(e) => format!("failed to gen JWT: {}",e),
         };
@@ -252,6 +267,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(db_pool.clone()))
+            .wrap(middleware::Logger::default())
             .service(index)
             .service(echo)
             .service(create_bonus)
