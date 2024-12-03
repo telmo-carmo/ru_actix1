@@ -71,8 +71,10 @@ async fn index() -> impl Responder {
 #[post("/echo")]
 async fn echo(req: web::Json<Req1>) -> impl Responder {
     warn!("Post /echo name={} age={}", req.name, req.age);
+    let mut rng = rand::thread_rng();
+    let random_id: u32 = rng.gen_range(0..1000);
     let rs = Resp1 {
-        id: 1234566,
+        id: random_id,
         name: req.name.clone(),
     };
     HttpResponse::Ok().json(rs)
@@ -188,8 +190,8 @@ async fn get_rnd(req: HttpRequest) -> impl Responder {
             Ok(claims) => {
                 // Token is valid, proceed
                 let mut rng = rand::thread_rng();
-                let random_number: u32 = rng.gen_range(0..100);
-                warn!("rnd = {}, JWT user={}", random_number, claims.sub);
+                let random_number : f32 = rng.gen();
+                warn!("rnd = {}, JWT user={}; role={}", random_number, claims.sub,claims.role);
                 HttpResponse::Ok().json(random_number)
             }
             Err(_) => {
@@ -224,7 +226,9 @@ async fn do_login(req: web::Json<LoginRequest>) -> impl Responder {
             .checked_add_signed(chrono::Duration::seconds(3600)) // Token expires in 1 hour
             .expect("Valid timestamp")
             .timestamp() as usize;
-        let token = match jwt_mw::generate_jwt(&username,"user",expiration) {
+        // get user role from db
+        let user_role = "user";
+        let token = match jwt_mw::generate_jwt(&username,user_role,expiration) {
             Ok(s) => s,
             Err(e) => format!("failed to gen JWT: {}",e),
         };

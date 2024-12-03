@@ -78,5 +78,8 @@ Content-Type: application/json
 GET  {{host1}}/auth/rnd
 Authorization: Bearer {{tok1}}
 
+###
+
+
 
 

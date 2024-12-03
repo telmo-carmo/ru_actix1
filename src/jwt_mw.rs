@@ -1,5 +1,7 @@
-use actix_web::{Error};
+use actix_web::Error;
+use chrono::{DateTime, Utc};
 use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
+use log::warn;
 use serde::{Deserialize, Serialize};
 use jsonwebtoken::{encode, Header, EncodingKey};
 
@@ -34,5 +36,14 @@ pub fn validate_jwt(hdr_auth: &str) -> Result<Claims, Error> {
     let token_data = decode::<Claims>(&token, &decoding_key, &validation)
         .map_err(|_| actix_web::error::ErrorUnauthorized("Invalid JWT token"))?;
 
+    let timestamp_i64 = token_data.claims.exp as i64;
+
+    // Create a NaiveDateTime from the timestamp
+    let naive_datetime = DateTime::from_timestamp(timestamp_i64, 0);
+    // Create a DateTime with UTC timezone
+    let datetime: DateTime<Utc> = naive_datetime.unwrap_or_else(||{ Utc::now()});
+    let expires_datetime = datetime.format("%Y-%m-%d %H:%M:%S.%f").to_string();
+    
+    warn!("JWT expires at {}",expires_datetime);
     Ok(token_data.claims)
 }
