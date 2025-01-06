@@ -71,7 +71,9 @@ Content-Type: application/json
 
 
 ###
-@tok1 = eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZW1vIiwicm9sZSI6InVzZXIiLCJleHAiOjE3MzU5MTkzODR9.6wisJoEygCi76v5NH9ZRoXNEnusDX0Ft8ExcxfMxf80
+@tok1 = eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZW1vIiwicm9sZSI6InVzZXIiLCJleHAiOjE3MzYyMDYwNDF9.PmhLteIRm2OIMmLE5F7vtNve8dGcG7jnf7pJ_6P7_Rw
+
+
 
 ###
 GET  {{host1}}/auth/rnd
