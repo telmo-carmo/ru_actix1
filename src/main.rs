@@ -24,6 +24,12 @@ cargo run -- 8000
 
 use std::env;
 use actix_web::{delete, get, post, put, web, App, HttpRequest, HttpResponse, HttpServer, Responder, middleware};
+use actix_files::Files;
+
+use actix_multipart::Multipart;
+use futures::{StreamExt, TryStreamExt};
+use std::io::Write;
+
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
 use dotenv::dotenv;
@@ -41,6 +47,7 @@ mod jwt_mw;
 
 use schema::{bonus,dept};
 use models::{Bonus,Dept};
+
 
 #[derive(Deserialize,Debug)]
 struct Req1 {
@@ -239,6 +246,32 @@ async fn do_login(req: web::Json<LoginRequest>) -> impl Responder {
 }
 
 
+#[post("/upload")]
+async fn upload_file(mut payload: Multipart) -> Result<HttpResponse, actix_web::Error> {
+ 
+    let mut rs  = "NONE Uploaded!".to_string();
+    while let Ok(Some(mut field)) = payload.try_next().await {
+        let content_disposition = field.content_disposition().unwrap();
+        let filename = content_disposition.get_filename().unwrap();
+        let filepath = format!("./uploads/{}", sanitize_filename::sanitize(&filename));
+
+        let filepath_cl = filepath.clone();
+        let mut f = web::block(move || std::fs::File::create(filepath_cl))
+            .await
+            .unwrap()
+            .unwrap();
+
+        while let Some(chunk) = field.next().await {
+            let data = chunk.unwrap();
+            f = web::block(move || f.write_all(&data).map(|_| f)).await.unwrap().unwrap();
+        }
+        rs = format!("File {} uploaded successfully",filepath);
+    }
+    
+    Ok(HttpResponse::Ok().body(rs))
+}
+
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let mut port = 8080;
@@ -283,6 +316,8 @@ async fn main() -> std::io::Result<()> {
             .service(get_dept)
             .service(get_rnd)
             .service(do_login)
+            .service(upload_file)
+            .service(Files::new("/static", "./static")) // Serve files from the "static"
             .route("/hey", web::get().to(manual_hello))
     })
     .bind(("127.0.0.1", port))?
