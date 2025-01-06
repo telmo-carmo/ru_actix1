@@ -38,6 +38,7 @@ use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 use chrono::{DateTime, Utc};
+use sanitize_filename;
 use rand::Rng;
 
 mod schema;
