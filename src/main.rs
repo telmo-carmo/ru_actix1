@@ -266,6 +266,7 @@ async fn upload_file(mut payload: Multipart) -> Result<HttpResponse, actix_web::
             let data = chunk.unwrap();
             f = web::block(move || f.write_all(&data).map(|_| f)).await.unwrap().unwrap();
         }
+        info!("File uploaded to {}",filepath);
         rs = format!("File {} uploaded successfully",filepath);
     }
     
