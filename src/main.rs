@@ -54,6 +54,7 @@ use models::{Bonus,Dept};
 struct Req1 {
     name: String,
     age: i32,
+    born: String,
 }
 
 #[derive(Serialize)]
@@ -273,6 +274,13 @@ async fn upload_file(mut payload: Multipart) -> Result<HttpResponse, actix_web::
     Ok(HttpResponse::Ok().body(rs))
 }
 
+#[post("/form1")]
+async fn form1(form: web::Form<Req1>) -> impl Responder {
+    info!("Form submitted with name={} age={} born={}", form.name, form.age,form.born);
+    HttpResponse::Ok().body(format!("Received: name={}, age={}, born={}", form.name, form.age,form.born))
+}
+
+
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -318,6 +326,7 @@ async fn main() -> std::io::Result<()> {
             .service(get_dept)
             .service(get_rnd)
             .service(do_login)
+            .service(form1)
             .service(upload_file)
             .service(Files::new("/static", "./static")) // Serve files from the "static"
             .route("/hey", web::get().to(manual_hello))
