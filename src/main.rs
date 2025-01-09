@@ -258,7 +258,7 @@ async fn upload_file(mut payload: Multipart) -> Result<HttpResponse, actix_web::
         let filepath = format!("./uploads/{}", sanitize_filename::sanitize(&filename));
 
         let filepath_cl = filepath.clone();
-        let mut f = web::block(move || std::fs::File::create(filepath_cl))
+        let mut f = web::block(move|| std::fs::File::create(&filepath_cl))
             .await
             .unwrap()
             .unwrap();
@@ -267,8 +267,8 @@ async fn upload_file(mut payload: Multipart) -> Result<HttpResponse, actix_web::
             let data = chunk.unwrap();
             f = web::block(move || f.write_all(&data).map(|_| f)).await.unwrap().unwrap();
         }
-        info!("File uploaded to {}",filepath);
-        rs = format!("File {} uploaded successfully",filepath);
+        info!("File uploaded to {filepath}");
+        rs = format!("File {filepath} uploaded successfully");
     }
     
     Ok(HttpResponse::Ok().body(rs))
