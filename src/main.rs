@@ -32,6 +32,10 @@ use std::io::Write;
 
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
+
+use utoipa_swagger_ui::SwaggerUi;
+use utoipa::{OpenApi};
+
 use dotenv::dotenv;
 //use env_logger::{Builder, Env};
 use log::{debug, info, warn};
@@ -94,6 +98,12 @@ async fn manual_hello() -> impl Responder {
 }
 
 // Bonus CRUD
+
+#[utoipa::path(
+    responses(
+        (status = 200, description = "Create one bonus in database")
+    )
+)]
 #[post("/api/bonus")]
 async fn create_bonus(pool: web::Data<DbPool>, pbonus: web::Json<Bonus>) -> impl Responder {
     let mut conn = pool.get().expect("Couldn't get db connection from pool");
@@ -114,6 +124,11 @@ async fn create_bonus(pool: web::Data<DbPool>, pbonus: web::Json<Bonus>) -> impl
     HttpResponse::Created().json(new_bonus)
 }
 
+#[utoipa::path(
+    responses(
+        (status = 200, description = "Get all bonus from database")
+    )
+)]
 #[get("/api/bonus")]
 async fn get_all_bonus(pool: web::Data<DbPool>) -> impl Responder {
     let mut conn = pool.get().expect("Couldn't get db connection from pool");
@@ -123,6 +138,11 @@ async fn get_all_bonus(pool: web::Data<DbPool>) -> impl Responder {
 }
 
 
+#[utoipa::path(
+    responses(
+        (status = 200, description = "Get one bonus from database")
+    )
+)]
 #[get("/api/bonus/{id}")]
 async fn get_bonus(pool: web::Data<DbPool>, id: web::Path<String>) -> impl Responder {
     let mut conn = pool.get().expect("Couldn't get db connection from pool");
@@ -136,6 +156,11 @@ async fn get_bonus(pool: web::Data<DbPool>, id: web::Path<String>) -> impl Respo
 }
 
 
+#[utoipa::path(
+    responses(
+        (status = 200, description = "Update one bonus in database")
+    )
+)]
 #[put("/api/bonus/{id}")]
 async fn update_bonus(pool: web::Data<DbPool>, id: web::Path<String>, pbonus: web::Json<Bonus>) -> impl Responder {
     let mut conn = pool.get().expect("Couldn't get db connection from pool");
@@ -156,7 +181,11 @@ async fn update_bonus(pool: web::Data<DbPool>, id: web::Path<String>, pbonus: we
     }
 }
 
-
+#[utoipa::path(
+    responses(
+        (status = 200, description = "Delete one bonus in database")
+    )
+)]
 #[delete("/api/bonus/{id}")]
 async fn delete_bonus(pool: web::Data<DbPool>, id: web::Path<String>) -> impl Responder {
     let mut conn = pool.get().expect("Couldn't get db connection from pool");
@@ -168,6 +197,8 @@ async fn delete_bonus(pool: web::Data<DbPool>, id: web::Path<String>) -> impl Re
     HttpResponse::Ok().finish()
 }
 
+
+#[utoipa::path()]
 #[get("/api/dept")]
 async fn get_all_dept(pool: web::Data<DbPool>) -> impl Responder {
     let mut conn = pool.get().expect("Couldn't get db connection from pool");
@@ -176,6 +207,7 @@ async fn get_all_dept(pool: web::Data<DbPool>) -> impl Responder {
     HttpResponse::Ok().json(results)
 }
 
+#[utoipa::path()]
 #[get("/api/dept/{id}")]
 async fn get_dept(pool: web::Data<DbPool>, deptno: web::Path<i32>) -> impl Responder {
     let mut conn = pool.get().expect("Couldn't get db connection from pool");
@@ -187,6 +219,18 @@ async fn get_dept(pool: web::Data<DbPool>, deptno: web::Path<i32>) -> impl Respo
         Ok(fdept) => HttpResponse::Ok().json(fdept),
         Err(_) => HttpResponse::NotFound().finish(),
     }
+}
+
+#[utoipa::path()]
+#[delete("/api/dept/{dept_no}")]
+async fn delete_dept(pool: web::Data<DbPool>, dept_no: web::Path<i32>) -> impl Responder {
+    let mut conn = pool.get().expect("Couldn't get db connection from pool");
+    info!("delete Dept deptno={}", dept_no);
+    diesel::delete(dept::table.filter(dept::columns::deptno.eq(dept_no.into_inner())))
+        .execute(&mut conn)
+        .expect("Error deleting dept");
+
+    HttpResponse::Ok().finish()
 }
 
 #[get("/auth/rnd")]
@@ -281,6 +325,19 @@ async fn form1(form: web::Form<Req1>) -> impl Responder {
 }
 
 
+#[derive(OpenApi)]
+#[openapi(
+    paths(
+        get_all_bonus, get_bonus, create_bonus, update_bonus, delete_bonus,
+        get_all_dept, get_dept, delete_dept,
+    ),
+    components(schemas(Bonus,Dept)),
+    tags(
+        (name = "Ru_actix1", description = "Ru-actix1 API Documentation")
+    )
+)]
+struct ApiDoc;
+
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -324,11 +381,14 @@ async fn main() -> std::io::Result<()> {
             .service(delete_bonus)
             .service(get_all_dept)
             .service(get_dept)
+            .service(delete_dept)
             .service(get_rnd)
             .service(do_login)
             .service(form1)
             .service(upload_file)
             .service(Files::new("/static", "./static")) // Serve files from the "static"
+            .service(SwaggerUi::new("/docs/{_:.*}")
+                        .url("/openapi.json",  ApiDoc::openapi())) // Serve Swagger UI and /openapi.json
             .route("/hey", web::get().to(manual_hello))
     })
     .bind(("127.0.0.1", port))?
