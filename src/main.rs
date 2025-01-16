@@ -366,7 +366,7 @@ async fn main() -> std::io::Result<()> {
         .build(manager)
         .expect("Failed to create DB pool.");
 
-    debug!("Running webserver on port {}", port);
+    debug!("Running webserver on http://localhost:/{}", port);
 
     HttpServer::new(move || {
         App::new()
@@ -391,7 +391,7 @@ async fn main() -> std::io::Result<()> {
                         .url("/openapi.json",  ApiDoc::openapi())) // Serve Swagger UI and /openapi.json
             .route("/hey", web::get().to(manual_hello))
     })
-    .bind(("127.0.0.1", port))?
+    .bind(("127.0.0.1", port))?   // .bind(("0.0.0.0", port))?
     .run()
     .await
 }
