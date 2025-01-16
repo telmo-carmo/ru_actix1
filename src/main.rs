@@ -1,5 +1,3 @@
-
-
 #[macro_use]
 extern crate diesel;
 
@@ -22,9 +20,11 @@ cargo run -- 8000
 
 */
 
-use std::env;
-use actix_web::{delete, get, post, put, web, App, HttpRequest, HttpResponse, HttpServer, Responder, middleware};
 use actix_files::Files;
+use actix_web::{
+    delete, get, middleware, post, put, web, App, HttpRequest, HttpResponse, HttpServer, Responder,
+};
+use std::env;
 
 use actix_multipart::Multipart;
 use futures::{StreamExt, TryStreamExt};
@@ -33,28 +33,26 @@ use std::io::Write;
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
 
+use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
-use utoipa::{OpenApi};
 
 use dotenv::dotenv;
 //use env_logger::{Builder, Env};
+use chrono::{DateTime, Utc};
 use log::{debug, info, warn};
+use rand::Rng;
+use sanitize_filename;
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
-use chrono::{DateTime, Utc};
-use sanitize_filename;
-use rand::Rng;
 
-mod schema;
-mod models;
 mod jwt_mw;
+mod models;
+mod schema;
 
+use models::{Bonus, Dept};
+use schema::{bonus, dept};
 
-use schema::{bonus,dept};
-use models::{Bonus,Dept};
-
-
-#[derive(Deserialize,Debug)]
+#[derive(Deserialize, Debug)]
 struct Req1 {
     name: String,
     age: i32,
@@ -69,15 +67,16 @@ struct Resp1 {
 
 type DbPool = r2d2::Pool<ConnectionManager<SqliteConnection>>;
 
-
 #[get("/")]
 async fn index() -> impl Responder {
     let start = SystemTime::now();
-    let since_the_epoch = start.duration_since(UNIX_EPOCH).expect("Time went backwards");
+    let since_the_epoch = start
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards");
     let secs = since_the_epoch.as_secs();
     let dt: DateTime<Utc> = DateTime::from(start);
     let dts = dt.format("%Y-%m-%d %H:%M:%S.%3f").to_string();
-    info!("Current time: {}, secs: {}",dts, secs);
+    info!("Current time: {}, secs: {}", dts, secs);
     HttpResponse::Ok().body(format!("Hello RU_actix1 {secs} - {dts}"))
 }
 
@@ -93,7 +92,7 @@ async fn echo(req: web::Json<Req1>) -> impl Responder {
     HttpResponse::Ok().json(rs)
 }
 
-async fn manual_hello() -> impl Responder { 
+async fn manual_hello() -> impl Responder {
     let dt = chrono::Local::now();
     let dts = dt.format("%Y-%m-%d %H:%M:%S.%3f").to_string();
     HttpResponse::Ok().body(format!("Hey there at {dts}"))
@@ -122,7 +121,7 @@ async fn create_bonus(pool: web::Data<DbPool>, pbonus: web::Json<Bonus>) -> impl
         .execute(&mut conn)
         .expect("Error saving new bonus");
 
-    info!("created bonus name={}",new_bonus.ename);
+    info!("created bonus name={}", new_bonus.ename);
     HttpResponse::Created().json(new_bonus)
 }
 
@@ -134,11 +133,12 @@ async fn create_bonus(pool: web::Data<DbPool>, pbonus: web::Json<Bonus>) -> impl
 #[get("/api/bonus")]
 async fn get_all_bonus(pool: web::Data<DbPool>) -> impl Responder {
     let mut conn = pool.get().expect("Couldn't get db connection from pool");
-    let results = bonus::table.load::<Bonus>(&mut conn).expect("Error loading bonuses");
-    info!("bonus get all #={}",results.len());
+    let results = bonus::table
+        .load::<Bonus>(&mut conn)
+        .expect("Error loading bonuses");
+    info!("bonus get all #={}", results.len());
     HttpResponse::Ok().json(results)
 }
-
 
 #[utoipa::path(
     responses(
@@ -148,7 +148,7 @@ async fn get_all_bonus(pool: web::Data<DbPool>) -> impl Responder {
 #[get("/api/bonus/{id}")]
 async fn get_bonus(pool: web::Data<DbPool>, id: web::Path<String>) -> impl Responder {
     let mut conn = pool.get().expect("Couldn't get db connection from pool");
-    info!("bonus get id={}",id);
+    info!("bonus get id={}", id);
     let result = bonus::table.find(id.into_inner()).first::<Bonus>(&mut conn);
 
     match result {
@@ -157,17 +157,20 @@ async fn get_bonus(pool: web::Data<DbPool>, id: web::Path<String>) -> impl Respo
     }
 }
 
-
 #[utoipa::path(
     responses(
         (status = 200, description = "Update one bonus in database")
     )
 )]
 #[put("/api/bonus/{id}")]
-async fn update_bonus(pool: web::Data<DbPool>, id: web::Path<String>, pbonus: web::Json<Bonus>) -> impl Responder {
+async fn update_bonus(
+    pool: web::Data<DbPool>,
+    id: web::Path<String>,
+    pbonus: web::Json<Bonus>,
+) -> impl Responder {
     let mut conn = pool.get().expect("Couldn't get db connection from pool");
 
-    info!("bonus update id={}",id);
+    info!("bonus update id={}", id);
     let updated_bonus = Bonus {
         ename: pbonus.ename.clone(),
         job: pbonus.job.clone(),
@@ -177,7 +180,8 @@ async fn update_bonus(pool: web::Data<DbPool>, id: web::Path<String>, pbonus: we
 
     match diesel::update(bonus::table.find(id.into_inner()))
         .set(&updated_bonus)
-        .execute(&mut conn) {
+        .execute(&mut conn)
+    {
         Ok(_) => HttpResponse::Ok().json(updated_bonus),
         Err(_) => HttpResponse::InternalServerError().finish(),
     }
@@ -191,7 +195,7 @@ async fn update_bonus(pool: web::Data<DbPool>, id: web::Path<String>, pbonus: we
 #[delete("/api/bonus/{id}")]
 async fn delete_bonus(pool: web::Data<DbPool>, id: web::Path<String>) -> impl Responder {
     let mut conn = pool.get().expect("Couldn't get db connection from pool");
-    info!("bonus delete id={}",id);
+    info!("bonus delete id={}", id);
     diesel::delete(bonus::table.find(id.into_inner()))
         .execute(&mut conn)
         .expect("Error deleting bonus");
@@ -199,13 +203,14 @@ async fn delete_bonus(pool: web::Data<DbPool>, id: web::Path<String>) -> impl Re
     HttpResponse::Ok().finish()
 }
 
-
 #[utoipa::path()]
 #[get("/api/dept")]
 async fn get_all_dept(pool: web::Data<DbPool>) -> impl Responder {
     let mut conn = pool.get().expect("Couldn't get db connection from pool");
-    let results = dept::table.load::<Dept>(&mut conn).expect("Error loading departments");
-    info!("depts get all #={}",results.len());
+    let results = dept::table
+        .load::<Dept>(&mut conn)
+        .expect("Error loading departments");
+    info!("depts get all #={}", results.len());
     HttpResponse::Ok().json(results)
 }
 
@@ -238,15 +243,21 @@ async fn delete_dept(pool: web::Data<DbPool>, dept_no: web::Path<i32>) -> impl R
 #[get("/auth/rnd")]
 async fn get_rnd(req: HttpRequest) -> impl Responder {
     // Validate the JWT token
-    let token = req.headers().get("Authorization").and_then(|header| header.to_str().ok());
+    let token = req
+        .headers()
+        .get("Authorization")
+        .and_then(|header| header.to_str().ok());
 
     if let Some(token) = token {
         match jwt_mw::validate_jwt(token) {
             Ok(claims) => {
                 // Token is valid, proceed
                 let mut rng = rand::thread_rng();
-                let random_number : f32 = rng.gen();
-                warn!("rnd = {}, JWT user={}; role={}", random_number, claims.sub,claims.role);
+                let random_number: f32 = rng.gen();
+                warn!(
+                    "rnd = {}, JWT user={}; role={}",
+                    random_number, claims.sub, claims.role
+                );
                 HttpResponse::Ok().json(random_number)
             }
             Err(_) => {
@@ -256,7 +267,6 @@ async fn get_rnd(req: HttpRequest) -> impl Responder {
     } else {
         return HttpResponse::Unauthorized().finish();
     }
-
 }
 
 #[derive(Deserialize)]
@@ -283,9 +293,9 @@ async fn do_login(req: web::Json<LoginRequest>) -> impl Responder {
             .timestamp() as usize;
         // get user role from db
         let user_role = "user";
-        let token = match jwt_mw::generate_jwt(&username,user_role,expiration) {
+        let token = match jwt_mw::generate_jwt(&username, user_role, expiration) {
             Ok(s) => s,
-            Err(e) => format!("failed to gen JWT: {}",e),
+            Err(e) => format!("failed to gen JWT: {}", e),
         };
         HttpResponse::Ok().json(LoginResponse { token })
     } else {
@@ -293,39 +303,45 @@ async fn do_login(req: web::Json<LoginRequest>) -> impl Responder {
     }
 }
 
-
 #[post("/upload")]
 async fn upload_file(mut payload: Multipart) -> Result<HttpResponse, actix_web::Error> {
- 
-    let mut rs  = "NONE Uploaded!".to_string();
+    let mut rs = "NONE Uploaded!".to_string();
     while let Ok(Some(mut field)) = payload.try_next().await {
         let content_disposition = field.content_disposition().unwrap();
         let filename = content_disposition.get_filename().unwrap();
         let filepath = format!("./uploads/{}", sanitize_filename::sanitize(&filename));
 
         let filepath_cl = filepath.clone();
-        let mut f = web::block(move|| std::fs::File::create(&filepath_cl))
+        let mut f = web::block(move || std::fs::File::create(&filepath_cl))
             .await
             .unwrap()
             .unwrap();
 
         while let Some(chunk) = field.next().await {
             let data = chunk.unwrap();
-            f = web::block(move || f.write_all(&data).map(|_| f)).await.unwrap().unwrap();
+            f = web::block(move || f.write_all(&data).map(|_| f))
+                .await
+                .unwrap()
+                .unwrap();
         }
         info!("File uploaded to {filepath}");
         rs = format!("File {filepath} uploaded successfully");
     }
-    
+
     Ok(HttpResponse::Ok().body(rs))
 }
 
 #[post("/form1")]
 async fn form1(form: web::Form<Req1>) -> impl Responder {
-    info!("Form submitted with name={} age={} born={}", form.name, form.age,form.born);
-    HttpResponse::Ok().body(format!("Received: name={}, age={}, born={}", form.name, form.age,form.born))
+    info!(
+        "Form submitted with name={} age={} born={}",
+        form.name, form.age, form.born
+    );
+    HttpResponse::Ok().body(format!(
+        "Received: name={}, age={}, born={}",
+        form.name, form.age, form.born
+    ))
 }
-
 
 #[derive(OpenApi)]
 #[openapi(
@@ -339,7 +355,6 @@ async fn form1(form: web::Form<Req1>) -> impl Responder {
     )
 )]
 struct ApiDoc;
-
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -389,11 +404,10 @@ async fn main() -> std::io::Result<()> {
             .service(form1)
             .service(upload_file)
             .service(Files::new("/static", "./static")) // Serve files from the "static"
-            .service(SwaggerUi::new("/docs/{_:.*}")
-                        .url("/openapi.json",  ApiDoc::openapi())) // Serve Swagger UI and /openapi.json
+            .service(SwaggerUi::new("/docs/{_:.*}").url("/openapi.json", ApiDoc::openapi())) // Serve Swagger UI and /openapi.json
             .route("/hey", web::get().to(manual_hello))
     })
-    .bind(("127.0.0.1", port))?   // .bind(("0.0.0.0", port))?
+    .bind(("127.0.0.1", port))? // .bind(("0.0.0.0", port))?
     .run()
     .await
 }
