@@ -41,7 +41,6 @@ use dotenv::dotenv;
 use chrono::{DateTime, Utc};
 use log::{debug, info, warn};
 use rand::Rng;
-use sanitize_filename;
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -261,11 +260,11 @@ async fn get_rnd(req: HttpRequest) -> impl Responder {
                 HttpResponse::Ok().json(random_number)
             }
             Err(_) => {
-                return HttpResponse::Unauthorized().finish();
+                HttpResponse::Unauthorized().finish()
             }
         }
     } else {
-        return HttpResponse::Unauthorized().finish();
+        HttpResponse::Unauthorized().finish()
     }
 }
 
@@ -293,7 +292,7 @@ async fn do_login(req: web::Json<LoginRequest>) -> impl Responder {
             .timestamp() as usize;
         // get user role from db
         let user_role = "user";
-        let token = match jwt_mw::generate_jwt(&username, user_role, expiration) {
+        let token = match jwt_mw::generate_jwt(username, user_role, expiration) {
             Ok(s) => s,
             Err(e) => format!("failed to gen JWT: {}", e),
         };
@@ -309,7 +308,7 @@ async fn upload_file(mut payload: Multipart) -> Result<HttpResponse, actix_web::
     while let Ok(Some(mut field)) = payload.try_next().await {
         let content_disposition = field.content_disposition().unwrap();
         let filename = content_disposition.get_filename().unwrap();
-        let filepath = format!("./uploads/{}", sanitize_filename::sanitize(&filename));
+        let filepath = format!("./uploads/{}", sanitize_filename::sanitize(filename));
 
         let filepath_cl = filepath.clone();
         let mut f = web::block(move || std::fs::File::create(&filepath_cl))
