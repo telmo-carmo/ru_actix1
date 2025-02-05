@@ -4,12 +4,14 @@
 GET {{host1}}/
 
 ###
-POST {{host1}}/echo
+POST {{host1}}/api/echo
 Content-Type: application/json
 
 {
     "name": "joe",
-    "age": 33
+    "sal": 123.56,
+    "age": 33,
+    "todo": false
 }
 
 ###

@@ -58,12 +58,6 @@ struct Req1 {
     born: String,
 }
 
-#[derive(Serialize)]
-struct Resp1 {
-    id: u32,
-    name: String,
-}
-
 type DbPool = r2d2::Pool<ConnectionManager<SqliteConnection>>;
 
 #[get("/")]
@@ -79,16 +73,30 @@ async fn index() -> impl Responder {
     HttpResponse::Ok().body(format!("Hello RU_actix1 {secs} - {dts}"))
 }
 
-#[post("/echo")]
-async fn echo(req: web::Json<Req1>) -> impl Responder {
-    warn!("Post /echo name={} age={}", req.name, req.age);
-    let mut rng = rand::thread_rng();
-    let random_id: u32 = rng.gen_range(0..1000);
-    let rs = Resp1 {
-        id: random_id,
-        name: req.name.clone(),
+#[derive(Deserialize, Serialize)]
+struct RequestEchoData {
+    #[serde(flatten)] // Allows for flexible JSON structure
+    other_fields: serde_json::Value, // Captures any other fields
+}
+
+#[derive(Serialize,Debug)]
+struct ResponseEchoData {
+    #[serde(flatten)] // Includes the original fields
+    original_data: serde_json::Value,
+    timestamp: String,
+}
+
+#[post("/api/echo")]
+async fn echo(data: web::Json<RequestEchoData>) -> impl Responder {
+    let now = Utc::now();
+    let timestamp = now.to_rfc3339(); // Or any other format you prefer
+
+    let response_data = ResponseEchoData {
+        original_data: data.into_inner().other_fields,
+        timestamp,
     };
-    HttpResponse::Ok().json(rs)
+    log::info!("echo back {:?}",response_data);
+    HttpResponse::Ok().json(response_data)
 }
 
 async fn manual_hello() -> impl Responder {
