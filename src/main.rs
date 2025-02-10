@@ -259,8 +259,8 @@ async fn get_rnd(req: HttpRequest) -> impl Responder {
         match jwt_mw::validate_jwt(token) {
             Ok(claims) => {
                 // Token is valid, proceed
-                let mut rng = rand::thread_rng();
-                let random_number: f32 = rng.gen();
+                let mut rng = rand::rng();
+                let random_number: f32 = rng.random();
                 warn!(
                     "rnd = {}, JWT user={}; role={}",
                     random_number, claims.sub, claims.role
