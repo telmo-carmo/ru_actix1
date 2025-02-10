@@ -69,7 +69,7 @@ async fn index() -> impl Responder {
     let secs = since_the_epoch.as_secs();
     let dt: DateTime<Utc> = DateTime::from(start);
     let dts = dt.format("%Y-%m-%d %H:%M:%S.%3f").to_string();
-    info!("Current time: {}, secs: {}", dts, secs);
+    info!("Current time UTC: {}, secs: {}", dts, secs);
     HttpResponse::Ok().body(format!("Hello RU_actix1 {secs} - {dts}"))
 }
 
@@ -102,7 +102,7 @@ async fn echo(data: web::Json<RequestEchoData>) -> impl Responder {
 async fn manual_hello() -> impl Responder {
     let dt = chrono::Local::now();
     let dts = dt.format("%Y-%m-%d %H:%M:%S.%3f").to_string();
-    HttpResponse::Ok().body(format!("Hey there at {dts}"))
+    HttpResponse::Ok().body(format!("Hey there now at {dts}"))
 }
 
 // Bonus CRUD
