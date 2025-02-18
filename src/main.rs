@@ -18,6 +18,18 @@ cargo build --release
 
 cargo run -- 8000
 
+-- to use a server running HTTPS :
+# gen a server x509 cert for localhost
+sh ./g1.sh
+
+openssl.exe x509 -in cert.pem -text -noout 
+
+set OPENSSL_LIB_DIR=c:\sdk\vcpkg\installed\x64-windows-static-md\lib
+set OPENSSL_INCLUDE_DIR=c:\sdk\vcpkg\installed\x64-windows-static-md\include
+set OPENSSL_STATIC=1
+
+cargo build
+
 */
 
 use actix_files::Files;
@@ -43,6 +55,9 @@ use log::{debug, info, warn};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
+// for HTTPS server
+use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
+
 
 mod jwt_mw;
 mod models;
@@ -365,7 +380,7 @@ struct ApiDoc;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let mut port = 8080;
+    let mut port = 8083;
 
     let args: Vec<String> = env::args().collect();
     if args.len() > 1 {
@@ -373,8 +388,8 @@ async fn main() -> std::io::Result<()> {
         port = match s_port.parse() {
             Ok(n) => n,
             Err(e) => {
-                println!("Error in port  argument: {}", e);
-                8080
+                println!("Error in port  argument: {}, using port {}", e, port);
+                port
             }
         }
     }
@@ -390,7 +405,14 @@ async fn main() -> std::io::Result<()> {
         .build(manager)
         .expect("Failed to create DB pool.");
 
-    debug!("Running webserver on http://localhost:/{}", port);
+
+    // Load SSL key and certificate
+    let mut ssl_builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
+    ssl_builder.set_private_key_file("key.pem", SslFiletype::PEM).unwrap();
+    ssl_builder.set_certificate_chain_file("cert.pem").unwrap();
+
+
+    debug!("Running webserver on https://localhost:{}/", port);
 
     HttpServer::new(move || {
         App::new()
@@ -414,7 +436,8 @@ async fn main() -> std::io::Result<()> {
             .service(SwaggerUi::new("/docs/{_:.*}").url("/openapi.json", ApiDoc::openapi())) // Serve Swagger UI and /openapi.json
             .route("/hey", web::get().to(manual_hello))
     })
-    .bind(("127.0.0.1", port))? // .bind(("0.0.0.0", port))?
+    .bind_openssl(("127.0.0.1",port), ssl_builder)?    
+    //.bind(("127.0.0.1", port))? // .bind(("0.0.0.0", port))?
     .run()
     .await
 }
