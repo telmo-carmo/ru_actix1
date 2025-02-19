@@ -5,3 +5,5 @@ Cargo.lock
 bin
 
 /uploads
+key.pem
+cert.pem
