@@ -1,4 +1,5 @@
-@host1 = https://localhost:8083
+#@host1 = https://localhost:8083
+@host1 = http://localhost:8080
 
 ###
 GET {{host1}}/

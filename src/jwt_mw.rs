@@ -48,6 +48,6 @@ pub fn validate_jwt(hdr_auth: &str) -> Result<Claims, Error> {
     let datetime: DateTime<Utc> = naive_datetime.unwrap_or_else(Utc::now);
     let expires_datetime = datetime.format("%Y-%m-%d %H:%M:%S.%f").to_string();
 
-    warn!("JWT expires at {}", expires_datetime);
+    warn!("JWT expires at {} UTC", expires_datetime);
     Ok(token_data.claims)
 }
