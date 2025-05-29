@@ -403,9 +403,9 @@ async fn main() -> std::io::Result<()> {
         .expect("Failed to create DB pool.");
 
     // Load SSL key and certificate:
-    let mut ssl_builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
-    ssl_builder.set_private_key_file("key.pem", SslFiletype::PEM).unwrap();
-    ssl_builder.set_certificate_chain_file("cert.pem").unwrap();
+    // let mut ssl_builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
+    // ssl_builder.set_private_key_file("key.pem", SslFiletype::PEM).unwrap();
+    // ssl_builder.set_certificate_chain_file("cert.pem").unwrap();
 
     debug!("Running webserver on https://localhost:{}/", port);
 
@@ -431,7 +431,7 @@ async fn main() -> std::io::Result<()> {
             .service(SwaggerUi::new("/docs/{_:.*}").url("/openapi.json", ApiDoc::openapi())) // Serve Swagger UI and /openapi.json
             .route("/hey", web::get().to(manual_hello))
     })
-    .bind_openssl(("127.0.0.1",port), ssl_builder)?
+    .bind(("127.0.0.1", 8080))? //.bind_openssl(("127.0.0.1",port), ssl_builder)?
     //.bind(("127.0.0.1", port))? // .bind(("0.0.0.0", port))?
     .run()
     .await
