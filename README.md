@@ -17,12 +17,15 @@ copy sqlite3.dll and sqlite3.lib to:
 # gen a server x509 cert for localhost
 sh ./g1.sh
 
+$ openssl req -x509 -newkey rsa:4096 -nodes -sha256 -out cert.pem -keyout key.pem -days 3650   -addext "subjectAltName=DNS:localhost"
+
+
 openssl x509 -in cert.pem -text -noout 
 
 set OPENSSL_LIB_DIR=c:\sdk\vcpkg\installed\x64-windows-static-md\lib
 set OPENSSL_INCLUDE_DIR=c:\sdk\vcpkg\installed\x64-windows-static-md\include
 set OPENSSL_STATIC=1
 
-cargo build
+cargo build --release
 
 ```
